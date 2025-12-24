@@ -1,107 +1,99 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>AR手势召唤圣诞树</title>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-  
-  <style>
-    body { margin: 0; overflow: hidden; background: #000; font-family: 'PingFang SC', sans-serif; }
-    #video_container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; }
-    video { transform: scaleX(-1); width: 100%; height: 100%; object-fit: cover; }
-    
-    /* 装饰圣诞树 */
-    #tree_wrapper {
-      position: absolute;
-      font-size: 80px;
-      pointer-events: none;
-      z-index: 10;
-      display: none;
-      filter: drop-shadow(0 0 15px rgba(255,215,0,0.8));
-      text-align: center;
-      transition: transform 0.1s ease-out;
-    }
-    
-    .star { font-size: 30px; display: block; animation: blink 1s infinite; }
-    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-
-    .info-tip {
-      position: absolute; top: 10%; width: 80%; left: 10%;
-      background: rgba(0,0,0,0.6); color: white; padding: 15px;
-      border-radius: 20px; text-align: center; z-index: 20;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>浪漫圣诞树</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        .info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+    </style>
 </head>
 <body>
+    <div class="info">Merry Christmas</div>
+    <script>
+        // 初始化场景、相机、渲染器
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
 
-<div class="info-tip" id="tip">正在启动相机...<br>请在 HTTPS 环境下运行并授权</div>
-<div id="video_container">
-  <video id="input_video"></video>
-  <div id="tree_wrapper">
-    <span class="star">⭐</span>
-    🎄
-  </div>
-</div>
+        // 粒子数量
+        const particleCount = 8000;
+        // 粒子几何体
+        const geometry = new THREE.BufferGeometry();
+        // 粒子位置数组
+        const positions = new Float32Array(particleCount * 3);
+        // 粒子颜色数组
+        const colors = new Float32Array(particleCount * 3);
+        // 粒子大小数组
+        const sizes = new Float32Array(particleCount);
 
-<script>
-const videoElement = document.getElementById('input_video');
-const treeWrapper = document.getElementById('tree_wrapper');
-const tip = document.getElementById('tip');
+        // 生成圣诞树形状的粒子位置、颜色和大小
+        for (let i = 0; i < particleCount; i++) {
+            const t = Math.random() * Math.PI * 2;
+            const h = Math.random() * 5;
+            const r = h * 0.2 * Math.random();
 
-function onResults(results) {
-  if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-    tip.style.display = 'none';
-    const landmarks = results.multiHandLandmarks[0];
-    
-    // 获取掌心关键点 (第9号点是中指根部)
-    const palmCenter = landmarks[9];
-    
-    // 镜像坐标换算
-    const x = (1 - palmCenter.x) * window.innerWidth;
-    const y = palmCenter.y * window.innerHeight;
-    
-    // 计算缩放（利用手掌深度，0号点到12号点的距离）
-    const scale = Math.hypot(landmarks[0].x - landmarks[12].x, landmarks[0].y - landmarks[12].y) * 2.5;
+            positions[i * 3] = r * Math.cos(t);
+            positions[i * 3 + 1] = h;
+            positions[i * 3 + 2] = r * Math.sin(t);
 
-    treeWrapper.style.display = 'block';
-    treeWrapper.style.left = `${x}px`;
-    treeWrapper.style.top = `${y}px`;
-    treeWrapper.style.transform = `translate(-50%, -70%) scale(${scale})`;
-  } else {
-    treeWrapper.style.display = 'none';
-  }
-}
+            // 颜色：粉色系
+            const pink = Math.random() * 0.5 + 0.5;
+            colors[i * 3] = pink;
+            colors[i * 3 + 1] = Math.random() * 0.3 + 0.2;
+            colors[i * 3 + 2] = Math.random() * 0.5 + 0.5;
 
-const hands = new Hands({
-  locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-});
+            sizes[i] = Math.random() * 2 + 1;
+        }
 
-hands.setOptions({
-  maxNumHands: 1,
-  modelComplexity: 1,
-  minDetectionConfidence: 0.7,
-  minTrackingConfidence: 0.7
-});
-hands.onResults(onResults);
+        // 设置几何体的位置、颜色和大小属性
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
-const camera = new Camera(videoElement, {
-  onFrame: async () => {
-    await hands.send({image: videoElement});
-  },
-  width: 1280,
-  height: 720
-});
+        // 粒子材质
+        const material = new THREE.PointsMaterial({
+            sizeAttenuation: true,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8
+        });
 
-// 检查是否为安全环境
-if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-    tip.innerHTML = "⚠️ 需要 HTTPS 环境才能开启摄像头";
-} else {
-    camera.start().then(() => {
-        tip.innerHTML = "✋ 举起手掌，召唤圣诞树";
-    });
-}
-</script>
+        // 创建粒子网格
+        const particles = new THREE.Points(geometry, material);
+        scene.add(particles);
+
+        // 相机位置
+        camera.position.z = 10;
+
+        // 动画函数
+        function animate() {
+            requestAnimationFrame(animate);
+            particles.rotation.y += 0.001;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // 窗口大小调整
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
 </body>
 </html>
